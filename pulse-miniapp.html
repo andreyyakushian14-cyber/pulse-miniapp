@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pulse — TikTok Toolkit</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E0E13;
+    --surface:#17171F;
+    --surface-2:#1E1E28;
+    --line:#2A2A35;
+    --text:#EDEBE6;
+    --muted:#8B8A99;
+    --cyan:#4FE3D4;
+    --coral:#FF5C7A;
+    --gold:#F2C572;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% -10%, rgba(79,227,212,0.10), transparent 40%),
+      radial-gradient(circle at 100% 0%, rgba(255,92,122,0.08), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  .wrap{max-width:520px; margin:0 auto; padding:20px 18px 0;}
+
+  /* ---------- Header ---------- */
+  header{padding:6px 2px 22px;}
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--cyan); opacity:.85; display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan); animation:blink 2.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1} 50%{opacity:.25}}
+  h1{
+    font-family:'Unbounded', sans-serif;
+    font-weight:900;
+    font-size:30px;
+    line-height:1.05;
+    margin:10px 0 6px;
+    letter-spacing:-.01em;
+  }
+  h1 span{color:var(--coral);}
+  .sub{color:var(--muted); font-size:14px; line-height:1.5; max-width:38ch;}
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; gap:4px; background:var(--surface); border:1px solid var(--line);
+    padding:4px; border-radius:14px; margin:20px 0 18px;
+  }
+  .tab{
+    flex:1; text-align:center; padding:10px 4px; border-radius:10px;
+    font-family:'Inter'; font-weight:600; font-size:13px; color:var(--muted);
+    cursor:pointer; user-select:none; transition:background .18s, color .18s;
+    border:none; background:transparent;
+  }
+  .tab.active{background:var(--surface-2); color:var(--text);}
+  .tab .tab-icon{display:block; font-size:15px; margin-bottom:2px;}
+
+  /* ---------- Panels ---------- */
+  .panel{display:none;}
+  .panel.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:18px;
+    padding:18px; margin-bottom:14px;
+  }
+  label{
+    display:block; font-family:'JetBrains Mono'; font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:8px;
+  }
+  input[type=text]{
+    width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    font-family:'Inter'; font-size:15px; padding:13px 14px; border-radius:12px;
+    outline:none; transition:border-color .15s;
+  }
+  input[type=text]:focus{border-color:var(--cyan);}
+  input[type=text]::placeholder{color:#55545f;}
+
+  .btn{
+    width:100%; margin-top:12px; border:none; border-radius:12px; padding:14px;
+    font-family:'Inter'; font-weight:600; font-size:14.5px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:transform .12s, opacity .12s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn-primary{background:var(--cyan); color:#06201C;}
+  .btn-coral{background:var(--coral); color:#2B0510;}
+  .btn:disabled{opacity:.5; pointer-events:none;}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  /* ---------- Waveform loader (signature element) ---------- */
+  .pulse-loader{display:none; align-items:center; justify-content:center; gap:3px; height:34px; margin:6px 0;}
+  .pulse-loader.active{display:flex;}
+  .pulse-loader span{
+    width:3px; background:var(--cyan); border-radius:2px;
+    animation:pulseBar 1s ease-in-out infinite;
+  }
+  .pulse-loader span:nth-child(1){height:10px; animation-delay:-0.9s;}
+  .pulse-loader span:nth-child(2){height:22px; animation-delay:-0.7s;}
+  .pulse-loader span:nth-child(3){height:32px; animation-delay:-0.5s;}
+  .pulse-loader span:nth-child(4){height:18px; animation-delay:-0.3s;}
+  .pulse-loader span:nth-child(5){height:26px; animation-delay:-0.1s;}
+  .pulse-loader span:nth-child(6){height:14px; animation-delay:0s;}
+  @keyframes pulseBar{0%,100%{transform:scaleY(.35); opacity:.5;} 50%{transform:scaleY(1); opacity:1;}}
+
+  /* ---------- Result blocks ---------- */
+  .result{display:none;}
+  .result.show{display:block; animation:fade .3s ease;}
+  .err{
+    display:none; background:rgba(255,92,122,0.08); border:1px solid rgba(255,92,122,0.35);
+    color:var(--coral); font-size:13px; padding:12px 14px; border-radius:12px; margin-top:12px;
+  }
+  .err.show{display:block;}
+
+  /* Video result */
+  .video-meta{display:flex; align-items:center; gap:12px; margin-top:14px;}
+  .video-meta .thumb{
+    width:52px;height:52px;border-radius:12px;background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;
+    border:1px solid var(--line);
+  }
+  .video-meta .who b{font-family:'Unbounded'; font-weight:700; font-size:14px;}
+  .video-meta .who div{font-size:12.5px; color:var(--muted); margin-top:2px;}
+  .stat-strip{display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;}
+  .stat-strip .s{font-family:'JetBrains Mono'; font-size:12.5px; color:var(--text);}
+  .stat-strip .s b{color:var(--cyan); font-weight:700;}
+
+  /* Account card */
+  .acc-head{display:flex; align-items:center; gap:14px;}
+  .avatar{
+    width:58px;height:58px;border-radius:16px; object-fit:cover; flex-shrink:0;
+    background:var(--surface-2); border:1px solid var(--line);
+  }
+  .acc-name{font-family:'Unbounded'; font-weight:700; font-size:16px;}
+  .acc-handle{color:var(--muted); font-size:13px; margin-top:2px;}
+
+  .verify-badge{
+    display:inline-flex; align-items:center; gap:6px; margin-top:12px;
+    padding:8px 12px; border-radius:100px; font-size:12.5px; font-weight:600;
+    position:relative; width:fit-content;
+  }
+  .verify-badge.yes{background:rgba(79,227,212,0.12); color:var(--cyan); border:1px solid rgba(79,227,212,0.4);}
+  .verify-badge.no{background:rgba(139,138,153,0.1); color:var(--muted); border:1px solid var(--line);}
+  .ring{
+    position:absolute; inset:-6px; border-radius:100px; border:1px solid var(--cyan);
+    opacity:0; animation:ringPulse 2.2s ease-out infinite;
+  }
+  .verify-badge.yes .ring{opacity:1;}
+  @keyframes ringPulse{0%{transform:scale(.9); opacity:.6;} 100%{transform:scale(1.15); opacity:0;}}
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;}
+  .stat-box{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:12px;}
+  .stat-box .n{font-family:'JetBrains Mono'; font-weight:700; font-size:18px; color:var(--text);}
+  .stat-box .l{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+
+  /* Compare */
+  .vs-wrap{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin-top:14px;}
+  .vs-mid{font-family:'Unbounded'; font-weight:900; color:var(--muted); font-size:13px;}
+  .vs-col{background:var(--surface-2); border:1px solid var(--line); border-radius:14px; padding:14px 10px; text-align:center;}
+  .vs-col img{width:44px;height:44px;border-radius:12px; object-fit:cover; margin-bottom:8px; background:var(--surface);}
+  .vs-col .name{font-family:'Unbounded'; font-size:12.5px; font-weight:700;}
+  .vs-col .metric{font-family:'JetBrains Mono'; font-size:15px; margin-top:8px;}
+  .vs-col .metric.win{color:var(--cyan);}
+  .vs-col .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; margin-top:10px; letter-spacing:.06em;}
+
+  footer{text-align:center; color:var(--muted); font-size:11px; padding:26px 0 10px; font-family:'JetBrains Mono';}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow"><span class="dot"></span> LIVE · PUBLIC DATA</div>
+    <h1>Pulse<span>.</span></h1>
+    <div class="sub">Завантаження відео без водяного знаку та реальна перевірка TikTok-акаунтів — статистика й верифікація напряму з публічного API.</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="dl"><span class="tab-icon">⬇</span>Відео</button>
+    <button class="tab" data-tab="acc"><span class="tab-icon">◈</span>Акаунт</button>
+    <button class="tab" data-tab="vs"><span class="tab-icon">⇄</span>Порівняти</button>
+  </div>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="panel active" id="panel-dl">
+    <div class="card">
+      <label>Посилання на відео TikTok</label>
+      <input type="text" id="dl-url" placeholder="https://www.tiktok.com/@user/video/...">
+      <button class="btn btn-coral" id="dl-btn">⬇ Отримати відео без водяного знаку</button>
+      <div class="pulse-loader" id="dl-loader"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="err" id="dl-err"></div>
+      <div class="result" id="dl-result">
+        <div class="video-meta">
+          <div class="thumb">🎬</div>
+          <div class="who">
+            <b id="dl-author">—</b>
+            <div id="dl-title">—</div>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div class="s">👁 <b id="dl-views">0</b></div>
+          <div class="s">❤ <b id="dl-likes">0</b></div>
+          <div class="s">💬 <b id="dl-comments">0</b></div>
+        </div>
+        <a class="btn btn-primary" id="dl-link" href="#" target="_blank" rel="noopener" style="text-decoration:none; margin-top:16px;">Відкрити / зберегти відео</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACCOUNT ============ -->
+  <section class="panel" id="panel-acc">
+    <div class="card">
+      <label>Юзернейм акаунта</label>
+      <input type="text" id="acc-user" placeholder="khaby.lame">
+      <button class="btn btn-primary" id="acc-btn">◈ Перевірити акаунт</button>
+      <div class="pulse-loader" id="acc-loader"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="err" id="acc-err"></div>
+      <div class="result" id="acc-result">
+        <div class="acc-head">
+          <img class="avatar" id="acc-avatar" src="" alt="">
+          <div>
+            <div class="acc-name" id="acc-name">—</div>
+            <div class="acc-handle" id="acc-handle">@—</div>
+          </div>
+        </div>
+        <div class="verify-badge" id="acc-badge">
+          <span class="ring"></span>
+          <span id="acc-badge-text">—</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="n" id="acc-followers">0</div><div class="l">Підписники</div></div>
+          <div class="stat-box"><div class="n" id="acc-following">0</div><div class="l">Підписки</div></div>
+          <div class="stat-box"><div class="n" id="acc-posts">0</div><div class="l">Відео</div></div>
+          <div class="stat-box"><div class="n" id="acc-likes">0</div><div class="l">Лайки</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section class="panel" id="panel-vs">
+    <div class="card">
+      <label>Два акаунти для порівняння</label>
+      <div class="row2">
+        <input type="text" id="vs-user1" placeholder="акаунт 1">
+        <input type="text" id="vs-user2" placeholder="акаунт 2">
+      </div>
+      <button class="btn btn-primary" id="vs-btn">⇄ Порівняти</button>
+      <div class="pulse-loader" id="vs-loader"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="err" id="vs-err"></div>
+      <div class="result" id="vs-result">
+        <div class="vs-wrap">
+          <div class="vs-col" id="vs-col1">
+            <img src="" id="vs-img1">
+            <div class="name" id="vs-name1">—</div>
+          </div>
+          <div class="vs-mid">VS</div>
+          <div class="vs-col" id="vs-col2">
+            <img src="" id="vs-img2">
+            <div class="name" id="vs-name2">—</div>
+          </div>
+        </div>
+        <div id="vs-metrics"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>PULSE TOOLKIT — DATA VIA PUBLIC TIKTOK ENDPOINTS</footer>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    tg?.HapticFeedback?.impactOccurred('light');
+  });
+});
+
+function fmtNum(n){
+  n = Number(n)||0;
+  if(n>=1000000) return (n/1000000).toFixed(1)+'M';
+  if(n>=1000) return (n/1000).toFixed(1)+'K';
+  return String(n);
+}
+function extractUsername(text){
+  text = (text||'').trim().replace(/^@/, '');
+  let m = text.match(/tiktok\.com\/@([\w.-]+)/);
+  if(m) return m[1];
+  m = text.match(/^([\w.-]{2,24})$/);
+  if(m) return m[1];
+  return null;
+}
+function extractVideoId(url){
+  let m = url.match(/video\/(\d{19})/) || url.match(/(\d{19})/);
+  return m ? m[1] : null;
+}
+
+async function fetchAccount(username){
+  const res = await fetch('https://tikwm.com/api/', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'url=' + encodeURIComponent('https://www.tiktok.com/@'+username) + '&count=1'
+  });
+  const d = await res.json();
+  if(d.code !== 0 || !d.data) throw new Error('Акаунт не знайдено або він приватний');
+  const dt = d.data;
+  return {
+    handle: username,
+    name: dt.author?.nickname || dt.author || username,
+    followers: dt.stats?.followerCount ?? dt.followers ?? 0,
+    following: dt.stats?.followingCount ?? dt.following ?? 0,
+    posts: dt.stats?.videoCount ?? dt.video_count ?? 0,
+    likes: dt.stats?.heartCount ?? dt.heart ?? 0,
+    verified: dt.author?.verified ?? dt.verified ?? false,
+    avatar: dt.author?.avatarThumb || dt.avatar || ''
+  };
+}
+
+async function fetchVideo(url){
+  const res = await fetch('https://tikwm.com/api/', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'url=' + encodeURIComponent(url) + '&hd=1'
+  });
+  const d = await res.json();
+  if(d.code !== 0 || !d.data) throw new Error('Не вдалося отримати відео. Перевір посилання.');
+  const dt = d.data;
+  const playUrl = dt.hdplay || dt.play || dt.wmplay;
+  if(!playUrl) throw new Error('Посилання на файл не знайдено');
+  return {
+    playUrl,
+    author: dt.author?.nickname || dt.author || '',
+    title: dt.title || '',
+    views: dt.play_count ?? dt.views ?? 0,
+    likes: dt.digg_count ?? dt.likes ?? 0,
+    comments: dt.comment_count ?? dt.comments ?? 0
+  };
+}
+
+// ---------- Download ----------
+document.getElementById('dl-btn').addEventListener('click', async ()=>{
+  const url = document.getElementById('dl-url').value.trim();
+  const err = document.getElementById('dl-err');
+  const result = document.getElementById('dl-result');
+  const loader = document.getElementById('dl-loader');
+  err.classList.remove('show'); result.classList.remove('show');
+  // Приймаємо і довгі, і короткі посилання (vm.tiktok.com / vt.tiktok.com) —
+  // короткі не містять ID у самому URL, його розгортає вже сервер API.
+  if(!/tiktok\.com/i.test(url)){ err.textContent='Встав коректне посилання на відео TikTok'; err.classList.add('show'); return; }
+
+  loader.classList.add('active');
+  document.getElementById('dl-btn').disabled = true;
+  try{
+    const v = await fetchVideo(url);
+    document.getElementById('dl-author').textContent = v.author || 'Невідомо';
+    document.getElementById('dl-title').textContent = v.title ? v.title.slice(0,80) : 'Без назви';
+    document.getElementById('dl-views').textContent = fmtNum(v.views);
+    document.getElementById('dl-likes').textContent = fmtNum(v.likes);
+    document.getElementById('dl-comments').textContent = fmtNum(v.comments);
+    document.getElementById('dl-link').href = v.playUrl;
+    result.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  }catch(e){
+    err.textContent = e.message || 'Помилка запиту';
+    err.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('error');
+  }finally{
+    loader.classList.remove('active');
+    document.getElementById('dl-btn').disabled = false;
+  }
+});
+
+// ---------- Account ----------
+document.getElementById('acc-btn').addEventListener('click', async ()=>{
+  const uname = extractUsername(document.getElementById('acc-user').value);
+  const err = document.getElementById('acc-err');
+  const result = document.getElementById('acc-result');
+  const loader = document.getElementById('acc-loader');
+  err.classList.remove('show'); result.classList.remove('show');
+  if(!uname){ err.textContent='Введи коректний юзернейм'; err.classList.add('show'); return; }
+
+  loader.classList.add('active');
+  document.getElementById('acc-btn').disabled = true;
+  try{
+    const a = await fetchAccount(uname);
+    document.getElementById('acc-avatar').src = a.avatar || '';
+    document.getElementById('acc-name').textContent = a.name;
+    document.getElementById('acc-handle').textContent = '@'+a.handle;
+    const badge = document.getElementById('acc-badge');
+    badge.className = 'verify-badge ' + (a.verified ? 'yes' : 'no');
+    document.getElementById('acc-badge-text').textContent = a.verified ? '✓ Верифіковано TikTok' : 'Без верифікації';
+    document.getElementById('acc-followers').textContent = fmtNum(a.followers);
+    document.getElementById('acc-following').textContent = fmtNum(a.following);
+    document.getElementById('acc-posts').textContent = fmtNum(a.posts);
+    document.getElementById('acc-likes').textContent = fmtNum(a.likes);
+    result.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  }catch(e){
+    err.textContent = e.message || 'Не вдалося отримати дані акаунта';
+    err.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('error');
+  }finally{
+    loader.classList.remove('active');
+    document.getElementById('acc-btn').disabled = false;
+  }
+});
+
+// ---------- Compare ----------
+document.getElementById('vs-btn').addEventListener('click', async ()=>{
+  const u1 = extractUsername(document.getElementById('vs-user1').value);
+  const u2 = extractUsername(document.getElementById('vs-user2').value);
+  const err = document.getElementById('vs-err');
+  const result = document.getElementById('vs-result');
+  const loader = document.getElementById('vs-loader');
+  err.classList.remove('show'); result.classList.remove('show');
+  if(!u1 || !u2){ err.textContent='Введи обидва юзернейми'; err.classList.add('show'); return; }
+
+  loader.classList.add('active');
+  document.getElementById('vs-btn').disabled = true;
+  try{
+    const [a, b] = await Promise.all([fetchAccount(u1), fetchAccount(u2)]);
+    document.getElementById('vs-img1').src = a.avatar || '';
+    document.getElementById('vs-img2').src = b.avatar || '';
+    document.getElementById('vs-name1').textContent = '@'+a.handle;
+    document.getElementById('vs-name2').textContent = '@'+b.handle;
+
+    const metrics = [
+      ['Підписники','followers'],
+      ['Лайки','likes'],
+      ['Відео','posts'],
+    ];
+    const el = document.getElementById('vs-metrics');
+    el.innerHTML = '';
+    metrics.forEach(([label, key])=>{
+      const va = a[key], vb = b[key];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:10px;';
+      row.innerHTML = `
+        <div class="metric ${va>=vb?'win':''}" style="text-align:right;font-family:'JetBrains Mono';">${fmtNum(va)}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">${label}</div>
+        <div class="metric ${vb>=va?'win':''}" style="text-align:left;font-family:'JetBrains Mono';">${fmtNum(vb)}</div>`;
+      el.appendChild(row);
+    });
+    const vrow = document.createElement('div');
+    vrow.style.cssText = 'display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:10px;';
+    vrow.innerHTML = `
+      <div style="text-align:right;">${a.verified?'✅':'—'}</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Верифікація</div>
+      <div style="text-align:left;">${b.verified?'✅':'—'}</div>`;
+    el.appendChild(vrow);
+
+    result.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  }catch(e){
+    err.textContent = e.message || 'Не вдалося порівняти акаунти';
+    err.classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred('error');
+  }finally{
+    loader.classList.remove('active');
+    document.getElementById('vs-btn').disabled = false;
+  }
+});
+</script>
+</body>
+</html>
